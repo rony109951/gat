@@ -1,20 +1,21 @@
 let load = 0;
 
-let loading = setInterval(()=>{
+let loader = setInterval(()=>{
 
 load++;
 
-document.getElementById("bar").style.width = load+"%";
+document.getElementById("progress").style.width = load+"%";
+
 
 if(load >= 100){
 
-clearInterval(loading);
+clearInterval(loader);
 
 document.getElementById("loading").style.display="none";
 
 document.getElementById("game").style.display="block";
 
-document.getElementById("info").style.display="block";
+document.getElementById("ui").style.display="block";
 
 startGame();
 
@@ -25,106 +26,58 @@ startGame();
 
 
 
-// =========================
-// نظام الصوت بالكود
-// =========================
 
-let audioCtx;
+// =================
+// الصوت بالكود
+// =================
 
-
-function initAudio(){
-
-if(!audioCtx){
-
-audioCtx =
-new(window.AudioContext ||
-window.webkitAudioContext)();
-
-}
-
-}
+let audio;
 
 
+function makeSound(freq,time){
 
-function sound(type){
+if(!audio)
+audio=new AudioContext();
 
-initAudio();
+
+let osc=audio.createOscillator();
+
+let gain=audio.createGain();
 
 
-let osc =
-audioCtx.createOscillator();
+osc.frequency.value=freq;
 
-let gain =
-audioCtx.createGain();
-
+gain.gain.value=.08;
 
 
 osc.connect(gain);
 
-gain.connect(audioCtx.destination);
-
-
-
-if(type=="car"){
-
-osc.frequency.value=120;
-
-gain.gain.value=.08;
-
-}
-
-
-if(type=="shoot"){
-
-osc.frequency.value=800;
-
-gain.gain.value=.2;
-
-}
-
-
-if(type=="scream"){
-
-osc.frequency.value=300;
-
-gain.gain.value=.15;
-
-}
-
-
-if(type=="police"){
-
-osc.frequency.value=600;
-
-gain.gain.value=.05;
-
-}
+gain.connect(audio.destination);
 
 
 osc.start();
 
 osc.stop(
-audioCtx.currentTime+.2
+audio.currentTime+time
 );
-
 
 }
 
 
 
-// =========================
-// اللعبة
-// =========================
+
+
+// =================
+// بداية اللعبة
+// =================
 
 
 function startGame(){
 
 
-let canvas =
-document.getElementById("game");
+let canvas=document.getElementById("game");
 
-let ctx =
-canvas.getContext("2d");
+let ctx=canvas.getContext("2d");
 
 
 canvas.width=innerWidth;
@@ -132,18 +85,27 @@ canvas.height=innerHeight;
 
 
 
+let world={
+
+width:3000,
+
+height:3000
+
+};
+
+
+
+// اللاعب
 
 let player={
 
-x:500,
+x:1500,
 
-y:400,
+y:1500,
 
-size:35,
+size:40,
 
 speed:5,
-
-health:100,
 
 inCar:false
 
@@ -151,25 +113,31 @@ inCar:false
 
 
 
+
+// السيارة
+
 let car={
 
-x:700,
+x:1700,
 
-y:400,
+y:1500,
 
-w:70,
+w:80,
 
-h:40
+h:45
 
 };
 
 
 
+
+// الشرطة
+
 let police={
 
-x:100,
+x:500,
 
-y:100,
+y:500,
 
 speed:2
 
@@ -177,25 +145,32 @@ speed:2
 
 
 
-let npc={
 
-x:900,
+// أشخاص
 
-y:300,
+let people=[];
 
-speed:1,
+
+for(let i=0;i<20;i++){
+
+people.push({
+
+x:Math.random()*3000,
+
+y:Math.random()*3000,
 
 alive:true
 
-};
+});
 
+}
 
-
-let bullets=[];
 
 
 let stars=0;
 
+
+let bullets=[];
 
 
 let keys={};
@@ -217,28 +192,33 @@ if(e.key=="e"){
 
 
 let d=Math.hypot(
+
 player.x-car.x,
+
 player.y-car.y
+
 );
 
 
+if(d<100){
 
-if(d<90){
-
-player.inCar=
-!player.inCar;
+player.inCar=!player.inCar;
 
 
-if(player.inCar){
+document.getElementById("carState").innerHTML=
 
-sound("car");
+player.inCar?"راكب":"لا يوجد";
 
-}
 
-}
+if(player.inCar)
+makeSound(150,.5);
 
 
 }
+
+
+}
+
 
 
 
@@ -253,28 +233,22 @@ x:player.x,
 
 y:player.y,
 
-speed:10
+dx:10
 
 });
 
 
-sound("shoot");
-
-
 stars++;
 
+document.getElementById("stars").innerHTML=stars;
 
-if(npc.alive){
 
-npc.alive=false;
-
-sound("scream");
-
-}
+makeSound(700,.1);
 
 
 
 }
+
 
 
 });
@@ -295,12 +269,13 @@ keys[e.key]=false;
 
 
 
+
 function update(){
 
 
 
-let speed =
-player.inCar ? 10 : player.speed;
+let speed=
+player.inCar?10:player.speed;
 
 
 
@@ -322,7 +297,7 @@ player.x+=speed;
 
 
 
-// السيارة تتبع اللاعب
+// السيارة
 
 if(player.inCar){
 
@@ -335,11 +310,12 @@ car.y=player.y;
 
 
 
+
 // الرصاص
 
 bullets.forEach(b=>{
 
-b.x+=b.speed;
+b.x+=b.dx;
 
 
 });
@@ -347,35 +323,8 @@ b.x+=b.speed;
 
 
 
-// NPC يهرب
-
-if(npc.alive){
-
-
-let d=
-Math.hypot(
-player.x-npc.x,
-player.y-npc.y
-);
-
-
-if(d<200){
-
-
-npc.x-=1;
-
-npc.y-=1;
-
-
-}
-
-}
-
-
-
 
 // الشرطة
-
 
 let dx=
 player.x-police.x;
@@ -385,36 +334,50 @@ let dy=
 player.y-police.y;
 
 
-let dis=
-Math.sqrt(
-dx*dx+dy*dy
-);
+let dist=Math.hypot(dx,dy);
 
 
 
-if(stars>0 && dis<600){
+if(stars>0 && dist<900){
 
 
-police.speed=
-2+stars;
+police.x+=dx/dist*police.speed;
+
+police.y+=dy/dist*police.speed;
 
 
-police.x+=
-dx/dis*
-police.speed;
-
-
-police.y+=
-dy/dis*
-police.speed;
-
-
-
-sound("police");
+makeSound(400,.05);
 
 
 }
 
+
+
+
+// الناس تهرب
+
+people.forEach(p=>{
+
+
+let d=Math.hypot(
+player.x-p.x,
+player.y-p.y
+);
+
+
+
+if(d<150){
+
+
+p.x-=1;
+
+p.y-=1;
+
+
+}
+
+
+});
 
 
 
@@ -424,7 +387,11 @@ draw();
 
 requestAnimationFrame(update);
 
+
 }
+
+
+
 
 
 
@@ -443,29 +410,55 @@ canvas.height
 
 
 
+// الكاميرا
+
+let camX=
+player.x-canvas.width/2;
+
+
+let camY=
+player.y-canvas.height/2;
+
+
+
+
 // الأرض
 
-ctx.fillStyle="#4b934b";
+ctx.fillStyle="#4b9b4b";
 
 ctx.fillRect(
-0,
-0,
-canvas.width,
-canvas.height
+-camX,
+-camY,
+world.width,
+world.height
 );
 
 
 
-// الطريق
+// الشوارع
 
-ctx.fillStyle="#555";
+ctx.fillStyle="#444";
+
+
+for(let i=0;i<3000;i+=300){
 
 ctx.fillRect(
-0,
-350,
-canvas.width,
-150
+i-camX,
+0-camY,
+80,
+3000
 );
+
+
+ctx.fillRect(
+0-camX,
+i-camY,
+3000,
+80
+);
+
+
+}
 
 
 
@@ -473,12 +466,46 @@ canvas.width,
 
 ctx.fillStyle="red";
 
+
 ctx.fillRect(
-car.x,
-car.y,
+
+car.x-camX,
+
+car.y-camY,
+
 car.w,
+
 car.h
+
 );
+
+
+
+
+// الناس
+
+ctx.fillStyle="orange";
+
+
+people.forEach(p=>{
+
+if(p.alive)
+
+ctx.fillRect(
+
+p.x-camX,
+
+p.y-camY,
+
+25,
+
+25
+
+);
+
+
+});
+
 
 
 
@@ -488,32 +515,22 @@ if(!player.inCar){
 
 ctx.fillStyle="blue";
 
+
 ctx.fillRect(
-player.x,
-player.y,
+
+player.x-camX,
+
+player.y-camY,
+
 player.size,
+
 player.size
+
 );
+
 
 }
 
-
-
-
-// NPC
-
-if(npc.alive){
-
-ctx.fillStyle="orange";
-
-ctx.fillRect(
-npc.x,
-npc.y,
-30,
-30
-);
-
-}
 
 
 
@@ -522,24 +539,31 @@ npc.y,
 
 ctx.fillStyle="black";
 
+
 ctx.fillRect(
-police.x,
-police.y,
+
+police.x-camX,
+
+police.y-camY,
+
 45,
+
 45
+
 );
 
 
 
 ctx.font="25px Arial";
 
-ctx.fillStyle="white";
-
-
 ctx.fillText(
+
 "👮",
-police.x,
-police.y
+
+police.x-camX,
+
+police.y-camY
+
 );
 
 
@@ -549,36 +573,31 @@ police.y
 
 ctx.fillStyle="yellow";
 
+
 bullets.forEach(b=>{
 
 ctx.fillRect(
-b.x,
-b.y,
+
+b.x-camX,
+
+b.y-camY,
+
 10,
+
 5
+
 );
+
 
 });
-
-
-
-// النجوم
-
-ctx.font="30px Arial";
-
-ctx.fillText(
-"⭐".repeat(stars),
-20,
-40
-);
 
 
 
 }
 
 
-update();
 
+update();
 
 
 }
